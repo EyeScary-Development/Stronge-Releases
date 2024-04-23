@@ -1,4 +1,4 @@
-# This is Stronge v0.9.0.
+# This is Stronge v0.10.0.
 Stronge is a simple command-line text editor, mainly centred on editing ESDLang (.esdla) files.
 ESDLang is a programming language created by us (EyeScary).
 ESDSyntax is a program designed to add syntax highlighting to Stronge.  
@@ -22,6 +22,6 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
 # Software versions
-Stronge: v0.9.0  
+Stronge: v0.10.0  
 ESDExt: v0.3.0  
 ESDLang: v5.0  

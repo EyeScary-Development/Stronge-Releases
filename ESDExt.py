@@ -70,10 +70,14 @@ def ESDsyntax(lnnum, line: str):
                         colourElse(part, words)
             case "endstat":
                         colour(part, words, 7, 1)
+            case "endwhile":
+                        colour(part, words, 8, 1)
+            case _ if part.startswith("while"):
+                        colourIf(part, words)
             case "var":
                         colour(part, words, 3, 3)
             case "quit":
-                    colourQ(part, words)
+                        colourQ(part, words)
             case _:
                         producesyntaxed(part, GREEN)
 

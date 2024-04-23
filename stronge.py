@@ -1,4 +1,4 @@
-#Stronge v0.9.0
+#Stronge v0.10.0
 #See README.md for License and other info
 
 #Import
@@ -10,12 +10,15 @@ import multiprocessing
 from producesyntaxed import producesyntaxed
 from ESDLang import main as ESDmain
 from ESDExt import ESDsyntax, ESDautocomplete
+from ezlog import log
 from pytube import YouTube
 from playsound import playsound
 
+beginLoadTime = time.time()
+
 if __name__ == "__main__":
     producesyntaxed("Main Process:\n", "\033[96m", False)
-print("Defining variables...")
+log("Defining variables...")
 
 #Def vars
 linenum = 1
@@ -24,39 +27,55 @@ fileExtension = ""
 runOptionsMenu = 0
 runEdit = 0
 runPrimarySettings = 0
-version = "v0.9.0"
+version = "v0.10.0"
+BLUE2 = '\033[96m'
 
-#!Music section, please ignore
-def download_audio(yt_link):
-    print("Downloading Background Song...")
-    try:
-        yt = YouTube(yt_link)
-        audio_stream = yt.streams.filter(only_audio=True).first()
-        audio_file = audio_stream.download()
-        return audio_file
-    except Exception as e:
-        print("Error downloading audio:", str(e))
-        return None
-
-def play_song(name):
-    while True: playsound(name)
-
-print("Checking for song presence...")
-if not os.path.exists(os.path.join(os.getcwd(), "Bad Pigges Phonk.mp4")):
-    download_audio("https://www.youtube.com/watch?v=m6edyjDaebM")
-#!End
-
-
-print("Opening and setting settings...")
+log("Opening and setting settings...")
 #Open the settings file (contains autocomplete settings)
 with open("settings", "r") as f:
     global fileExtensionDefault
     settings = f.readlines()
     mainSettings = json.loads(settings[1]) #Yes, main settings are line 2
     fileExtensionDefault = mainSettings['fileExtensionDefault']
+    musicYTlink = mainSettings['musicYTlink']
+
+#Audio downloader (from youtube)
+def download_audio(yt_link):
+    log(f"Downloading new background song with link {yt_link}...")
+    try:
+        yt = YouTube(yt_link)
+        audio_stream = yt.streams.filter(only_audio=True).first()
+        audio_file = audio_stream.download(os.path.join(os.getcwd(), "resources"), "song.mp4")
+        log("Success")
+        return audio_file
+    except Exception as e:
+        log("Error downloading audio:" + str(e))
+        return None
+
+def play_song():
+    try:
+        while True: playsound(os.path.join(os.getcwd(), "resources", "song.mp4"))
+    except Exception as e:
+        log("playsound error "+ str(e))
+
+log("Checking for song presence...")
+if not os.path.exists(os.path.join(os.getcwd(), "resources", "song.mp4")):
+    download_audio(musicYTlink) #Gotta love using YouTube as a CDN
+
+log("Comparing old settings...")
+#Checker to update anything that may need to be redownloaded based on setting changes
+with open(os.path.join(os.getcwd(), "resources", "oldchecks"), "r") as f:
+    oldchecks = f.readlines()
+    if "youtu" not in musicYTlink:
+        log("Invalid YT URL. Not playing music.")
+    elif oldchecks[0] != musicYTlink:
+        oldchecks[0] = musicYTlink
+        download_audio(musicYTlink)
+        with open(os.path.join(os.getcwd(), "resources", "oldchecks"), "w") as fw:
+            fw.writelines(oldchecks)
 
 
-print("Defining functions...")
+log("Defining functions...")
 #Clear the terminal
 def clearConsole():
     if os.name == "nt":
@@ -77,18 +96,10 @@ def incln(forwards=True):
     else:
         linenum-=1
 
-#Append with a "\n" beforehand
+#Append with a "\n" after
 def appendn(data):
-    if os.path.exists(filename): #The whole point of this and the below code that reads check is to make sure that the file doesn't end up with a blank line one... yeah...
-        check = True
-    else:
-        check = False
-
     with open(filename, 'a+') as f:
-        if check:
-            f.write("\n" + data)
-        else:
-            f.write(data)
+        f.write(data + "\n")
 
 
 #Print with line numbers and syntax highlighting for .esdla files
@@ -123,7 +134,7 @@ def rewriteLine(line_number, new_content):
             f.writelines(lines)
         reloadFile() #Refresh the file (as if stronge is starting up again)
     except Exception as e:
-        print("Error while rewriting: " + e)
+        log("Error while rewriting: " + e)
 
 # Prompt the user to enter the new content for rewriting a specific line
 def promptForRewrite(line_number):
@@ -145,7 +156,7 @@ def insertBeforeLine(line_number, new_content):
             f.writelines(lines)
         reloadFile() #Reload the file (as if stronge is starting up again)
     except Exception as e:
-        print("Error while inserting: " + e)
+        log("Error while inserting: " + e)
 
 # Prompt the user to enter the content for inserting before a specific line
 def promptForInsert(line_number):
@@ -157,9 +168,6 @@ def deleteLine(line_number):
     with open(filename, 'r') as f: #Read lines in filename
         lines = f.readlines()
     if 0 < line_number <= len(lines): #If the line exists...
-        if linenum-1 == line_number:
-            print("Deleteing or editing the line above the current one inserts a blank line after you make more changes and idk why, enter to continue.")
-            input()
         del lines[line_number - 1]
     else: #If it doesn't...
         print("Line number out of range.")
@@ -169,7 +177,7 @@ def deleteLine(line_number):
             f.writelines(lines)
         reloadFile() #Reload the file (as if stronge is starting up again)
     except Exception as e: #If problem...
-        print("Error while deleting: " + str(e))
+        log("Error while deleting: " + str(e))
 
 # Prompt the user to enter the line number to delete
 def promptForDelete(line_number):
@@ -279,6 +287,7 @@ def editFile():
 def editPrimarySettings(settings):
     allSettings = settings[0]
     primarySettings = settings[1]
+    print("Settings may take a relaunch to update.")
     settingToModify = input("Which setting would you like to modify? (x to exit): ")
     if settingToModify == "x":
         pass
@@ -303,7 +312,7 @@ def displaySettings(line):
         primarySettings = json.loads(allSettings[line])
     for setting in primarySettings:
         producesyntaxed(setting, '\033[38;5;226m')
-        producesyntaxed("is set to ", '\033[96m', False)
+        producesyntaxed("is set to ", BLUE2, False)
         producesyntaxed(f"{primarySettings[setting]}\n", '\033[38;5;208m', False)
     editPrimarySettings([allSettings, primarySettings])
 
@@ -318,15 +327,21 @@ def optionsMenu():
             displaySettings(1)
         case "r":
             with open("README.md", "r") as f:
-                producesyntaxed(f.read()+"\n", '\033[96m', False)
+                producesyntaxed(f.read()+"\n", BLUE2, False)
         case "x":
             global runOptionsMenu
             runOptionsMenu = 0
-    
+
+def helpMenu():
+    clearConsole()
+    with open("HELP.md", "r") as f:
+        producesyntaxed(f.read()+"\n", BLUE2, False)
+    input("Enter to proceed back to main menu.")
+
 
 def home():
     print("Welcome to Stronge editor " + version)
-    print("Available commands:\n(e)dit or create a file\n(o)ptions menu\ne(x)it Stronge")
+    print("Available commands:\n(e)dit or create a file\n(o)ptions menu\n(h)elp\ne(x)it Stronge")
     command = input("Please enter a command: ").lower()
     clearConsole()
     match command:
@@ -339,26 +354,24 @@ def home():
             global runEdit
             runEdit = 1 #Variable so the edit process runs
             editFile() #Triggers the edit process
+        case "h":
+            helpMenu()
         case "x":
-            print("Exiting Stronge...")
+            log("Exiting Stronge...")
             extremelyAmazingPhonkProcess.terminate()
             sys.exit()
-        case _:
-            print("Command not found. Returning home in 3")
-            time.sleep(1)
-            print("2")
-            time.sleep(1)
-            print("1")
-            time.sleep(1)
     clearConsole()
 
 
 if __name__ == "__main__":
+    log(f"Loaded main process in {time.time()-beginLoadTime} seconds")
     producesyntaxed("Song Process:\n", "\033[96m", False)
-    extremelyAmazingPhonkProcess = multiprocessing.Process(target=play_song, args=("Bad Pigges Phonk.mp4",))
-    extremelyAmazingPhonkProcess.start()
-    time.sleep(0.25)
+    if "youtu" in musicYTlink:
+        extremelyAmazingPhonkProcess = multiprocessing.Process(target=play_song)
+        extremelyAmazingPhonkProcess.start()
+    time.sleep(0.5)
     clearConsole()
     while True: home() 
 else:
-    print("Loaded Stronge!")
+    log(f"Loaded song process in {time.time()-beginLoadTime} seconds")
+    producesyntaxed("Loaded Stronge!", '\033[38;5;120m', False)

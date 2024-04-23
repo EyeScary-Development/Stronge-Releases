@@ -15,4 +15,10 @@ var 1e_coehoornstraat input num1 to test
 var 2e_coehoornstraat input num2 to test
 var 3e_coehoornstraat 1e_coehoornstraat * 2e_coehoornstraat
 write num1: 1e_coehoornstraat * num2: 2e_coehoornstraat = answer: 3e_coehoornstraat
+var whilelop 1
+while whilelop > 0
+write whilelop
+var whilelop -1
+endwhile
+write oh
 quit
