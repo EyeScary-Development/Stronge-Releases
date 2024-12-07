@@ -1,14 +1,9 @@
 #ESDExt v0.3.0.
 
 import json
-from producesyntaxed import producesyntaxed
-
-RED = '\033[38;5;203m'
-ORANGE = '\033[38;5;208m'
-GREEN = '\033[38;5;120m'
-YELLOW = '\033[38;5;226m'
-BLUE = '\033[38;5;117m' #dark-aqua sort of colour
-BLUE2 = '\033[96m' #darker blue
+import sys
+from output.producesyntaxed import producesyntaxed
+from output.colours import *
 
 with open("settings", "r") as f:
     global autoReplacements
@@ -56,7 +51,7 @@ def colour(part, words, correctLength, correctLineLength=1):
         producesyntaxed(part, RED)
 
 def ESDsyntax(lnnum, line: str):
-    print(f"\n{lnnum} :", end=" ")
+    sys.stdout.write(f"\n{lnnum} : ")
     words = line.split()
     for part in words:
         match part:
@@ -76,6 +71,8 @@ def ESDsyntax(lnnum, line: str):
                         colourIf(part, words)
             case "var":
                         colour(part, words, 3, 3)
+            case "function":
+                        colour(part, words, 8, 2)
             case "quit":
                         colourQ(part, words)
             case _:

@@ -1,2 +1,3 @@
 {"i": "input", "w": "write", "e": "else", "en": "endstat", "n": "num", "s": "str", "v": "var", "q": "quit", "1e_chs": "1e_coehoornstraat"}
-{"fileExtensionDefault": "esdla", "musicYTlink": "https://www.youtube.com/watch?v=m6edyjDaebM"}
+{"fileExtensionDefault": "esdla", "musicYTlink": "song"}
+py-auto: {"i": "input", "p": "print"}

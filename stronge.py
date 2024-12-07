@@ -1,4 +1,4 @@
-#Stronge v0.10.0
+#Stronge v0.11.0
 #See README.md for License and other info
 
 #Import
@@ -7,9 +7,12 @@ import sys
 import json
 import time
 import multiprocessing
-from producesyntaxed import producesyntaxed
+import requests
+from output.producesyntaxed import producesyntaxed
 from ESDLang import main as ESDmain
-from ESDExt import ESDsyntax, ESDautocomplete
+from extensions.ESDExt import ESDsyntax, ESDautocomplete
+from extensions.PyExt import PYsyntax, PYautocomplete
+from output.colours import BLUE2
 from ezlog import log
 from pytube import YouTube
 from playsound import playsound
@@ -27,8 +30,7 @@ fileExtension = ""
 runOptionsMenu = 0
 runEdit = 0
 runPrimarySettings = 0
-version = "v0.10.0"
-BLUE2 = '\033[96m'
+version = "v0.11.0"
 
 log("Opening and setting settings...")
 #Open the settings file (contains autocomplete settings)
@@ -103,10 +105,12 @@ def appendn(data):
 
 
 #Print with line numbers and syntax highlighting for .esdla files
-def pront(linenum, line):
+def pront(linenum, line: str):
     global fileExtension
     if fileExtension == "esdla":
         ESDsyntax(linenum, line)
+    elif fileExtension == "py":
+        PYsyntax(linenum, line)
     else:
         print(linenum, ":", line.strip("\n"))
 
@@ -121,7 +125,8 @@ def reloadFile():
 
 
 #Rewrite a specific line by line number
-def rewriteLine(line_number, new_content):
+def rewriteLine(line_number):
+    new_content = input(f"Enter new content for line {line_number}: ")
     with open(filename, 'r') as f: #Read lines in filename
         lines = f.readlines()
     if 0 < line_number <= len(lines): #If the line exists..
@@ -136,13 +141,9 @@ def rewriteLine(line_number, new_content):
     except Exception as e:
         log("Error while rewriting: " + e)
 
-# Prompt the user to enter the new content for rewriting a specific line
-def promptForRewrite(line_number):
-    new_content = input(f"Enter new content for line {line_number}: ")
-    rewriteLine(line_number, new_content)
-
 # Insert a line before a specific line number
-def insertBeforeLine(line_number, new_content):
+def insertBeforeLine(line_number):
+    new_content = input("Enter the content to insert: ")
     with open(filename, 'r') as f: #Read lines in filename
         lines = f.readlines()
     if 0 < line_number <= len(lines): #If the line exists...
@@ -157,11 +158,6 @@ def insertBeforeLine(line_number, new_content):
         reloadFile() #Reload the file (as if stronge is starting up again)
     except Exception as e:
         log("Error while inserting: " + e)
-
-# Prompt the user to enter the content for inserting before a specific line
-def promptForInsert(line_number):
-    new_content = input("Enter the content to insert: ")
-    insertBeforeLine(line_number, new_content)
 
 # Delete a specific line number
 def deleteLine(line_number):
@@ -188,19 +184,19 @@ def promptForDelete(line_number):
         print("Deletion aborted.")
 
 #Handle any commands with arguments (as in, in 'rewrite 3', 3 is the argument)
-def argCommand(inp):
+def argCommand(inp: str):
     if inp.startswith("rewrite"): #Rewrite command
         parts = inp.split(" ")
         if len(parts) == 2 and parts[1].isdigit(): #If the second thing after rewrite is a number (as in 'rewrite 3'), then prompt for rewrite with that line number
             line_number = int(parts[1])
-            promptForRewrite(line_number) 
+            rewriteLine(line_number) 
         else:
             print("Invalid syntax for rewrite command.") #Else, you did it wrong so it will tell you
     elif inp.startswith("insert"): #Insert command
         parts = inp.split(" ")
         if len(parts) == 2 and parts[1].isdigit(): #If the second thing after insert is a number (as in 'insert 3'), then prompt for insert at that line number
             line_number = int(parts[1])
-            promptForInsert(line_number)
+            insertBeforeLine(line_number)
         else:
             print("Invalid syntax for insert command.") #Else, you did it wrong so it will tell you
     elif inp.startswith("delete"):  #If the second thing after delete is a number (as in 'delete 3'), then prompt for delete at that line number
@@ -221,18 +217,25 @@ def handleInput(inp):
     global runEdit
     if fileExtension == "esdla":
         inp = ESDautocomplete(inp)
+    elif fileExtension == "py":
+        inp = PYautocomplete(inp)
     match inp: #Match the input to _
         case "exit" | "x": #Exit command
             runEdit = 0
-        case "run": #Run command (uses ESDlang)
+        case "run" | "rn": #Run command (uses ESDLang)
             if fileExtension == "esdla":
                 clearConsole()
                 ESDmain(filename)
                 input("Program finished. enter to go back to home screen.")
                 runEdit = 0
+            elif fileExtension == "py":
+                clearConsole()
+                os.system(f"python3 {filename}")
+                input("Program finished. enter to go back to home screen.")
+                runEdit = 0
             else:
                 print("not ESDLang")
-        case "reset": #Reset file command (wipes the file)
+        case "reset" | "rs": #Reset file command (wipes the file)
             choic = input("Are you sure? Y/N: ")
             if choic.lower() == "y":
                 clearFile()
@@ -256,21 +259,35 @@ def loadFile():
             pront(linenum, line)
             incln()
 
-def editFile():
+def editFile(ogfn=""):
     global filename
     global fileExtension
     global fileExtensionDefault
     global linenum
+    global runEdit
     linenum = 1
-    filename = input("Choose a filename: ")
-    fileExtension = input("Choose file type: ")
-    if fileExtension == "":
-        filename = filename + "." + fileExtensionDefault
-        fileExtension = fileExtensionDefault #This has to be done because otherwise anything that checks the file extension just breaks
-    else:
+    if not ogfn == "":
+        runEdit = True
+        filename = ogfn
+        filename, fileExtension = filename.split(".")
         if fileExtension.startswith("."): #If the file extension starts with a '.', make it so it doesn't
             fileExtension = fileExtension.removeprefix(".")
         filename = filename.strip() + "." + fileExtension.strip()
+    else:
+        filename = input("Choose a filename: ")
+        fileExtension = input("Choose file type: ")
+    if fileExtension == "":
+        filename = filename + "." + fileExtensionDefault
+        fileExtension = fileExtensionDefault #This has to be done because otherwise anything that checks the file extension just breaks
+    elif ogfn == "":
+        if fileExtension.startswith("."): #If the file extension starts with a '.', make it so it doesn't
+            fileExtension = fileExtension.removeprefix(".")
+        filename = filename.strip() + "." + fileExtension.strip()
+    if "/" or "\\" not in filename:
+        if ogfn == "":
+            filename = os.path.join(os.getcwd(), "files", filename)
+        else:
+            filename = os.path.join(os.getcwd(), filename)
     clearConsole()
 
     try: #Try to load the inputted file from save. If there is no file, just skip and create a new one.
@@ -279,9 +296,12 @@ def editFile():
     except FileNotFoundError:
         pass
 
-    global runEdit
     while runEdit: #Create a new line for you to write on in an infinite loop
         newLine()
+
+    clearConsole()
+    if not ogfn == "" and not None:
+        while True: home()
 
 #For editing primary settings, called by optionsMenu()
 def editPrimarySettings(settings):
@@ -337,7 +357,16 @@ def helpMenu():
     with open("HELP.md", "r") as f:
         producesyntaxed(f.read()+"\n", BLUE2, False)
     input("Enter to proceed back to main menu.")
-
+    
+def sysArgs():
+    if len(sys.argv) >= 1:
+        try: 
+            sys.argv[2]
+        except IndexError:
+            try:
+                return sys.argv[1]
+            except IndexError:
+                return ""
 
 def home():
     print("Welcome to Stronge editor " + version)
@@ -358,20 +387,34 @@ def home():
             helpMenu()
         case "x":
             log("Exiting Stronge...")
-            extremelyAmazingPhonkProcess.terminate()
+            try: extremelyAmazingPhonkProcess.terminate()
+            except: pass
             sys.exit()
     clearConsole()
 
 
 if __name__ == "__main__":
     log(f"Loaded main process in {time.time()-beginLoadTime} seconds")
-    producesyntaxed("Song Process:\n", "\033[96m", False)
     if "youtu" in musicYTlink:
+        producesyntaxed("Song Process:\n", "\033[96m", False)
         extremelyAmazingPhonkProcess = multiprocessing.Process(target=play_song)
         extremelyAmazingPhonkProcess.start()
-    time.sleep(0.5)
+    elif "song" in musicYTlink:
+        if not os.path.exists(os.path.join(os.getcwd(), "resources", "song.mp4")):
+            audio_file = requests.get("https://dl.wilburwilliams.uk/api/raw/?path=/assets/stronge/song.mp4")
+            with open(os.path.join(os.getcwd(), "resources", "song.mp4"), "wb") as f:
+                f.write(audio_file.content)
+        producesyntaxed("Song Process:\n", "\033[96m", False)
+        extremelyAmazingPhonkProcess = multiprocessing.Process(target=play_song)
+        extremelyAmazingPhonkProcess.start()
+
+    time.sleep(1)
     clearConsole()
-    while True: home() 
+    ogfn = sysArgs()
+    if ogfn != "":
+        editFile(ogfn)
+    else:
+        while True: home() 
 else:
     log(f"Loaded song process in {time.time()-beginLoadTime} seconds")
     producesyntaxed("Loaded Stronge!", '\033[38;5;120m', False)

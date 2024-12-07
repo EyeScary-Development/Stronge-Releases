@@ -3,8 +3,9 @@ import random
 from typing import (List, Any)
 import time
 
-#Define variables
+#Create lists to store information about the variables and functions
 vars={}
+functions={}
 
 #Random number
 def radno(input_list: List[Any]):
@@ -78,7 +79,7 @@ def variablehandling(input_list: List[Any]):
         else:
             if input_list[1] in ["*","/","+","-"] and len(input_list)==3:
                 vars[varname]=float(mathsops(input_list))
-            
+
             elif len(varvalstring.split())>1:
                 if varvalstring.startswith("input"):
                     vars[varname]=ins(varvalstring)
@@ -89,7 +90,7 @@ def variablehandling(input_list: List[Any]):
 
 
 
-#Print functions
+#Print function
 def printah(input_list: List[Any]):
     input_list.remove("write")
     for part in input_list:
@@ -99,6 +100,7 @@ def printah(input_list: List[Any]):
             print(part, end=" ")
     print()
 
+#Checks if conditions return true or false
 def condcheck(input_list: List[Any]):
   if len(input_list) != 3:
       print("a conditioned statement requires 3 arguments, ", len(input_list), "are given")
@@ -144,11 +146,16 @@ def condcheck(input_list: List[Any]):
       case _:
         print("error: condition to judge if statement on is not properly defined")
 
-#interprets a line from a file
+#interprets a line from a file and dispatches the appropriate data from that line to the appropriate functions
 def interpret(file, cond=...):
             userInput = file.readline()
             if userInput.startswith("var"):
                 variablehandling(userInput.strip("\n").split())
+            elif userInput.startswith("function"):
+                if userInput not in functions:
+                    functionlogger(file, userInput.strip("\n").split(), userInput)
+                else:
+                    print("Error, 2 functions with same name")
             elif userInput == "quit\n":
                 return True
             elif userInput.startswith("write"):
@@ -168,6 +175,10 @@ def interpret(file, cond=...):
                 whilechecker(userInput.strip("\n").split(), file)
             elif len(userInput.strip("\n").split()) == 3 and userInput.strip("\n").split()[1] in ["*","/","+","-"]:
                 print(mathsops(userInput.split()))
+            elif userInput.split()[0] in functions:
+                functioncalled(file, userInput, userInput.strip("\n").split())
+            elif userInput.startswith("endfunction"):
+                return True
 
 #Handles if statements
 def ifchecker(input_list: List[Any], file):
@@ -181,18 +192,41 @@ def ifchecker(input_list: List[Any], file):
 #handles while statements
 def whilechecker(input_list: List[Any], file):
     input_list.remove("while")
-    cond="while "+' '.join(input_list)+'\n'
+    condition="while "+' '.join(input_list)+'\n'
     while condcheck(input_list):
-        if interpret(file, cond):
+        if interpret(file, condition):
             break
     ln = ...
     while ln != "endwhile\n":
         ln=file.readline()
 
+#stores functions and their starting line
+def functionlogger(file, input_list: List[Any], line):
+    input_list.remove("function")
+    functions[input_list[0]]=line
+    ln=...
+    while ln != "endfunction "+input_list[0]+"\n":
+        ln=file.readline()
+
+#when a function is called, this function finds the function in the code, executes it and then returns to the line after it was called
+def functioncalled(file, line, input_list: List[Any]):
+    file.seek(0)
+    currentline=...
+    while currentline != functions[input_list[0]]:
+        currentline=file.readline()
+    end="endfunction "+input_list[0]
+    while True:
+        if interpret(file):
+            break
+    file.seek(0)
+    ln=...
+    while ln != line:
+        ln=file.readline()
+
 #Main function
-def main(fileName="trun.txt"):
-    print("ESDLang 6 ...")
-    time.sleep(1)
+def main(fileName="trun.esdla"):
+    print("ESDLang 7 ...")
+    time.sleep(0.5)
     with open(fileName, 'r') as file:
         while True:
             if interpret(file):
